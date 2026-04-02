@@ -1,11 +1,4 @@
 WITH 
--- 配置参数
-params AS (
-    SELECT 
-        '2025-04' AS report_month,
-        '2025-04-01' AS sales_date
-),
-
 -- 组织维度计划数据
 org_plan AS (
     SELECT 
@@ -63,8 +56,8 @@ org_merged AS (
         SUM(p.pl1) AS pl1,
         SUM(p.pl2) AS pl2,
         SUM(s.sl) AS sl,
-        CONCAT(CAST(ROUND((1 - (SUM(ABS(p.pl1 - s.sl)) / SUM(p.pl1))) * 100, 1) AS STRING), '%') AS pl1_org_r,
-        CONCAT(CAST(ROUND((1 - (SUM(ABS(p.pl2 - s.sl)) / SUM(p.pl2))) * 100, 1) AS STRING), '%') AS pl2_org_r
+        ROUND((1 - (SUM(ABS(p.pl1 - s.sl)) / SUM(p.pl1))) * 100, 1) AS pl1_org_num,
+        ROUND((1 - (SUM(ABS(p.pl2 - s.sl)) / SUM(p.pl2))) * 100, 1) AS pl2_org_num
     FROM org_plan p
     LEFT JOIN org_sales s 
         ON p.lv1 = s.lv1 
@@ -76,12 +69,11 @@ org_merged AS (
 sku_merged AS (
     SELECT 
         p.lv1,
-        CONCAT(CAST(ROUND((1 - (SUM(IF(p.lev = 1, ABS(p.pl1 - s.sl), 0)) / SUM(IF(p.lev = 1, p.pl1, 0))) * 100, 1) AS STRING), '%') AS pl1_lev1_sku_r,
-        CONCAT(CAST(ROUND((1 - (SUM(IF(p.lev = 0, ABS(p.pl1 - s.sl), 0)) / SUM(IF(p.lev = 0, p.pl1, 0))) * 100, 1) AS STRING), '%') AS pl1_lev0_sku_r,
-        CONCAT(CAST(ROUND((1 - (SUM(ABS(p.pl1 - s.sl)) / SUM(p.pl1))) * 100, 1) AS STRING), '%') AS pl1_sku_r,
-        CONCAT(CAST(ROUND((1 - (SUM(IF(p.lev = 1, ABS(p.pl2 - s.sl), 0)) / SUM(IF(p.lev = 1, p.pl2, 0))) * 100, 1) AS STRING), '%') AS pl2_lev1_sku_r,
-        CONCAT(CAST(ROUND((1 - (SUM(IF(p.lev = 0, ABS(p.pl2 - s.sl), 0)) / SUM(IF(p.lev = 0, p.pl2, 0))) * 100, 1) AS STRING), '%') AS pl2_lev0_sku_r,
-        CONCAT(CAST(ROUND((1 - (SUM(ABS(p.pl2 - s.sl)) / SUM(p.pl2))) * 100, 1) AS STRING), '%') AS pl2_sku_r,
+        ROUND((1 - (SUM(IF(p.lev = 1, ABS(p.pl1 - s.sl), 0)) / SUM(IF(p.lev = 1, p.pl1, 0))) * 100, 1) AS pl1_lev1_sku_num,
+        ROUND((1 - (SUM(IF(p.lev = 0, ABS(p.pl1 - s.sl), 0)) / SUM(IF(p.lev = 0, p.pl1, 0))) * 100, 1) AS pl1_lev0_sku_num,
+        ROUND((1 - (SUM(ABS(p.pl1 - s.sl)) / SUM(p.pl1))) * 100, 1) AS pl1_sku_num,
+        ROUND((1 - (SUM(IF(p.lev = 1, ABS(p.pl2 - s.sl), 0)) / SUM(IF(p.lev = 1, p.pl2, 0))) * 100, 1) AS pl2_lev1_sku_num,
+        ROUND((1 - (SUM(IF(p.lev = 0, ABS(p.pl2 - s.sl), 0)) / SUM(IF(p.lev = 0, p.pl2, 0))) * 100, 1) AS pl2_lev0_sku_num,
         ROUND((1 - (SUM(ABS(p.pl2 - s.sl)) / SUM(p.pl2))) * 100, 1) AS pl2_sku_num
     FROM sku_plan p
     LEFT JOIN sku_sales s 
@@ -97,16 +89,16 @@ SELECT
     ROUND(o.pl1, 1) AS 销售计划KL,
     ROUND(o.pl2, 1) AS 需求计划KL,
     ROUND(o.sl, 1) AS 实际KL,
-    o.pl1_org_r AS 销售计划执行,
-    o.pl2_org_r AS 需求计划执行,
-    s.pl1_lev1_sku_r AS 重点产品1,
-    s.pl1_lev0_sku_r AS 常规产品1,
-    s.pl1_sku_r AS 小计1,
-    s.pl2_lev1_sku_r AS 重点产品2,
-    s.pl2_lev0_sku_r AS 常规产品2,
-    s.pl2_sku_r AS 小计2,
+    CONCAT(CAST(o.pl1_org_num AS VARCHAR), '%') AS 销售计划执行,
+    CONCAT(CAST(o.pl2_org_num AS VARCHAR), '%') AS 需求计划执行,
+    CONCAT(CAST(s.pl1_lev1_sku_num AS VARCHAR), '%') AS 重点产品1,
+    CONCAT(CAST(s.pl1_lev0_sku_num AS VARCHAR), '%') AS 常规产品1,
+    CONCAT(CAST(s.pl1_sku_num AS VARCHAR), '%') AS 小计1,
+    CONCAT(CAST(s.pl2_lev1_sku_num AS VARCHAR), '%') AS 重点产品2,
+    CONCAT(CAST(s.pl2_lev0_sku_num AS VARCHAR), '%') AS 常规产品2,
+    CONCAT(CAST(s.pl2_sku_num AS VARCHAR), '%') AS 小计2,
     '80%' AS 目标准确率,
-    CONCAT(CAST(ROUND(s.pl2_sku_num - 80, 1) AS STRING), '%') AS 与目标比差异
+    CONCAT(CAST(ROUND(s.pl2_sku_num - 80, 1) AS VARCHAR), '%') AS 与目标比差异
 FROM org_merged o
 LEFT JOIN sku_merged s 
     ON o.lv1 = s.lv1

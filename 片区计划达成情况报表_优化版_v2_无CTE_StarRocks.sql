@@ -3,16 +3,16 @@ SELECT
     ROUND(org_summary.pl1, 1) AS 销售计划KL,
     ROUND(org_summary.pl2, 1) AS 需求计划KL,
     ROUND(org_summary.sl, 1) AS 实际KL,
-    org_summary.pl1_org_r AS 销售计划执行,
-    org_summary.pl2_org_r AS 需求计划执行,
-    sku_summary.pl1_lev1_sku_r AS 重点产品1,
-    sku_summary.pl1_lev0_sku_r AS 常规产品1,
-    sku_summary.pl1_sku_r AS 小计1,
-    sku_summary.pl2_lev1_sku_r AS 重点产品2,
-    sku_summary.pl2_lev0_sku_r AS 常规产品2,
-    sku_summary.pl2_sku_r AS 小计2,
+    CONCAT(CAST(org_summary.pl1_org_num AS VARCHAR), '%') AS 销售计划执行,
+    CONCAT(CAST(org_summary.pl2_org_num AS VARCHAR), '%') AS 需求计划执行,
+    CONCAT(CAST(sku_summary.pl1_lev1_sku_num AS VARCHAR), '%') AS 重点产品1,
+    CONCAT(CAST(sku_summary.pl1_lev0_sku_num AS VARCHAR), '%') AS 常规产品1,
+    CONCAT(CAST(sku_summary.pl1_sku_num AS VARCHAR), '%') AS 小计1,
+    CONCAT(CAST(sku_summary.pl2_lev1_sku_num AS VARCHAR), '%') AS 重点产品2,
+    CONCAT(CAST(sku_summary.pl2_lev0_sku_num AS VARCHAR), '%') AS 常规产品2,
+    CONCAT(CAST(sku_summary.pl2_sku_num AS VARCHAR), '%') AS 小计2,
     '80%' AS 目标准确率,
-    CONCAT(CAST(ROUND(sku_summary.pl2_sku_num - 80, 1) AS STRING), '%') AS 与目标比差异
+    CONCAT(CAST(ROUND(sku_summary.pl2_sku_num - 80, 1) AS VARCHAR), '%') AS 与目标比差异
 FROM (
     -- 组织维度按片区汇总
     SELECT 
@@ -20,8 +20,8 @@ FROM (
         SUM(p.first_month_sales_litre) AS pl1,
         SUM(p.first_month_require_litre) AS pl2,
         SUM(s.op_sales_litre) AS sl,
-        CONCAT(CAST(ROUND((1 - (SUM(ABS(p.first_month_sales_litre - s.op_sales_litre)) / SUM(p.first_month_sales_litre))) * 100, 1) AS STRING), '%') AS pl1_org_r,
-        CONCAT(CAST(ROUND((1 - (SUM(ABS(p.first_month_require_litre - s.op_sales_litre)) / SUM(p.first_month_require_litre))) * 100, 1) AS STRING), '%') AS pl2_org_r
+        ROUND((1 - (SUM(ABS(p.first_month_sales_litre - s.op_sales_litre)) / SUM(p.first_month_sales_litre))) * 100, 1) AS pl1_org_num,
+        ROUND((1 - (SUM(ABS(p.first_month_require_litre - s.op_sales_litre)) / SUM(p.first_month_require_litre))) * 100, 1) AS pl2_org_num
     FROM (
         -- 组织维度计划数据
         SELECT 
@@ -51,12 +51,11 @@ LEFT JOIN (
     -- SKU维度按片区汇总
     SELECT 
         p.lvl1_org_name AS lv1,
-        CONCAT(CAST(ROUND((1 - (SUM(IF(p.lev = 1, ABS(p.pl1 - s.sl), 0)) / SUM(IF(p.lev = 1, p.pl1, 0))) * 100, 1) AS STRING), '%') AS pl1_lev1_sku_r,
-        CONCAT(CAST(ROUND((1 - (SUM(IF(p.lev = 0, ABS(p.pl1 - s.sl), 0)) / SUM(IF(p.lev = 0, p.pl1, 0))) * 100, 1) AS STRING), '%') AS pl1_lev0_sku_r,
-        CONCAT(CAST(ROUND((1 - (SUM(ABS(p.pl1 - s.sl)) / SUM(p.pl1))) * 100, 1) AS STRING), '%') AS pl1_sku_r,
-        CONCAT(CAST(ROUND((1 - (SUM(IF(p.lev = 1, ABS(p.pl2 - s.sl), 0)) / SUM(IF(p.lev = 1, p.pl2, 0))) * 100, 1) AS STRING), '%') AS pl2_lev1_sku_r,
-        CONCAT(CAST(ROUND((1 - (SUM(IF(p.lev = 0, ABS(p.pl2 - s.sl), 0)) / SUM(IF(p.lev = 0, p.pl2, 0))) * 100, 1) AS STRING), '%') AS pl2_lev0_sku_r,
-        CONCAT(CAST(ROUND((1 - (SUM(ABS(p.pl2 - s.sl)) / SUM(p.pl2))) * 100, 1) AS STRING), '%') AS pl2_sku_r,
+        ROUND((1 - (SUM(IF(p.lev = 1, ABS(p.pl1 - s.sl), 0)) / SUM(IF(p.lev = 1, p.pl1, 0))) * 100, 1) AS pl1_lev1_sku_num,
+        ROUND((1 - (SUM(IF(p.lev = 0, ABS(p.pl1 - s.sl), 0)) / SUM(IF(p.lev = 0, p.pl1, 0))) * 100, 1) AS pl1_lev0_sku_num,
+        ROUND((1 - (SUM(ABS(p.pl1 - s.sl)) / SUM(p.pl1))) * 100, 1) AS pl1_sku_num,
+        ROUND((1 - (SUM(IF(p.lev = 1, ABS(p.pl2 - s.sl), 0)) / SUM(IF(p.lev = 1, p.pl2, 0))) * 100, 1) AS pl2_lev1_sku_num,
+        ROUND((1 - (SUM(IF(p.lev = 0, ABS(p.pl2 - s.sl), 0)) / SUM(IF(p.lev = 0, p.pl2, 0))) * 100, 1) AS pl2_lev0_sku_num,
         ROUND((1 - (SUM(ABS(p.pl2 - s.sl)) / SUM(p.pl2))) * 100, 1) AS pl2_sku_num
     FROM (
         -- SKU维度计划数据
